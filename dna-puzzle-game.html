@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA→RNA→단백질 퍼즐 게임</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow-x: hidden;
+        }
+
+        #startScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #startScreen h1 {
+            color: white;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        #startScreen p {
+            color: white;
+            font-size: 20px;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        #startButton {
+            padding: 20px 60px;
+            font-size: 24px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+
+        #startButton:hover {
+            transform: scale(1.1);
+        }
+
+        #gameContainer {
+            display: none;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        #roundInfo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        #timer, #score {
+            font-size: 20px;
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        #mainContent {
+            display: flex;
+            gap: 20px;
+        }
+
+        #leftPanel {
+            width: 200px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 20px;
+            padding-bottom: 100px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        #leftPanel h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        #centerPanel {
+            flex: 1;
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        #rightPanel {
+            width: 320px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #rightPanel h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+            position: sticky;
+            top: 0;
+            background: rgba(255,255,255,0.95);
+            padding: 10px 0;
+            z-index: 10;
+        }
+
+        .codon-table {
+            font-size: 16px;
+            line-height: 2;
+            color: #333;
+        }
+
+        .codon-group {
+            background: #f8f9fa;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .codon-group strong {
+            color: #667eea;
+            font-size: 18px;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .codon-list {
+            color: #555;
+            font-size: 15px;
+        }
+
+        .dna-container, .rna-container, .protein-container {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .dna-strand {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            justify-content: center;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 10px;
+            transition: background 0.2s;
+        }
+
+        .dna-strand:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .dna-strand.selected {
+            background: rgba(102, 126, 234, 0.3);
+            border: 3px solid #667eea;
+        }
+
+        .dna-strand.correct {
+            background: rgba(40, 167, 69, 0.2);
+            border: 3px solid #28a745;
+        }
+
+        .dna-strand.incorrect {
+            background: rgba(220, 53, 69, 0.2);
+            border: 3px solid #dc3545;
+        }
+
+        .base, .rna-base, .protein-box {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            background: white;
+        }
+
+        .base, .rna-base {
+            background: #e3f2fd;
+        }
+
+        .protein-box {
+            width: 80px;
+            background: #f3e5f5;
+        }
+
+        .connector {
+            width: 2px;
+            height: 20px;
+            background: #667eea;
+            margin: 0 auto;
+        }
+
+        .rna-row {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+
+        .protein-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .puzzle-piece {
+            cursor: move;
+            user-select: none;
+            transition: transform 0.1s;
+        }
+
+        .puzzle-piece:hover {
+            transform: scale(1.1);
+        }
+
+        .puzzle-piece.dragging {
+            opacity: 0.5;
+        }
+
+        .drop-zone {
+            background: #f0f0f0 !important;
+            border: 2px dashed #999 !important;
+        }
+
+        .drop-zone.drag-over {
+            background: #d4edda !important;
+            border-color: #28a745 !important;
+        }
+
+        .puzzle-pieces {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        #checkButton, #nextButton {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 18px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #checkButton:hover, #nextButton:hover {
+            background: #5568d3;
+        }
+
+        #nextButton {
+            display: none;
+        }
+
+        #endScreen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #endScreen h1 {
+            color: white;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        #endScreen p {
+            color: white;
+            font-size: 32px;
+            margin-bottom: 40px;
+        }
+
+        #restartButton {
+            padding: 20px 60px;
+            font-size: 24px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="startScreen">
+        <h1>🧬 DNA→RNA→단백질 퍼즐 게임</h1>
+        <p>
+            DNA의 염기서열이 RNA로 전사되고, RNA가 단백질로 번역되는 과정을 퍼즐로 배워보세요!<br>
+            총 3라운드로 구성되며, 빈칸을 채워 정답을 맞춰보세요.
+        </p>
+        <button id="startButton">게임 시작</button>
+    </div>
+
+    <div id="gameContainer">
+        <div id="header">
+            <div id="roundInfo">라운드 1/3</div>
+            <div id="timer">시간: 00:00</div>
+            <div id="score">점수: 10000</div>
+        </div>
+
+        <div id="mainContent">
+            <div id="leftPanel">
+                <h3>퍼즐 조각</h3>
+                <div id="puzzlePieces" class="puzzle-pieces"></div>
+            </div>
+
+            <div id="centerPanel">
+                <div class="dna-container">
+                    <div class="section-title">DNA (이중나선) - RNA와 일치하지 않는 줄을 선택하세요</div>
+                    <div id="dnaStrand1" class="dna-strand"></div>
+                    <div id="dnaStrand2" class="dna-strand"></div>
+                </div>
+
+                <div class="connector"></div>
+
+                <div class="rna-container">
+                    <div class="section-title">RNA (단일가닥)</div>
+                    <div id="rnaStrand" class="rna-row"></div>
+                </div>
+
+                <div class="connector"></div>
+
+                <div class="protein-container">
+                    <div class="section-title">단백질 (아미노산)</div>
+                    <div id="proteinStrand" class="protein-row"></div>
+                </div>
+
+                <button id="checkButton">정답 확인</button>
+                <button id="nextButton">다음 라운드</button>
+            </div>
+
+            <div id="rightPanel">
+                <h3>코돈표</h3>
+                <div id="codonTable" class="codon-table"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="endScreen">
+        <h1>🎉 게임 완료!</h1>
+        <p id="finalScore">최종 점수: 0</p>
+        <button id="restartButton">다시 시작</button>
+    </div>
+
+    <script>
+        const CODON_TABLE = {
+            'UUU': 'Phe', 'UUC': 'Phe', 'UUA': 'Leu', 'UUG': 'Leu',
+            'UCU': 'Ser', 'UCC': 'Ser', 'UCA': 'Ser', 'UCG': 'Ser',
+            'UAU': 'Tyr', 'UAC': 'Tyr', 'UGU': 'Cys', 'UGC': 'Cys', 'UGG': 'Trp',
+            'CUU': 'Leu', 'CUC': 'Leu', 'CUA': 'Leu', 'CUG': 'Leu',
+            'CCU': 'Pro', 'CCC': 'Pro', 'CCA': 'Pro', 'CCG': 'Pro',
+            'CAU': 'His', 'CAC': 'His', 'CAA': 'Gln', 'CAG': 'Gln',
+            'CGU': 'Arg', 'CGC': 'Arg', 'CGA': 'Arg', 'CGG': 'Arg',
+            'AUU': 'Ile', 'AUC': 'Ile', 'AUA': 'Ile', 'AUG': 'Met',
+            'ACU': 'Thr', 'ACC': 'Thr', 'ACA': 'Thr', 'ACG': 'Thr',
+            'AAU': 'Asn', 'AAC': 'Asn', 'AAA': 'Lys', 'AAG': 'Lys',
+            'AGU': 'Ser', 'AGC': 'Ser', 'AGA': 'Arg', 'AGG': 'Arg',
+            'GUU': 'Val', 'GUC': 'Val', 'GUA': 'Val', 'GUG': 'Val',
+            'GCU': 'Ala', 'GCC': 'Ala', 'GCA': 'Ala', 'GCG': 'Ala',
+            'GAU': 'Asp', 'GAC': 'Asp', 'GAA': 'Glu', 'GAG': 'Glu',
+            'GGU': 'Gly', 'GGC': 'Gly', 'GGA': 'Gly', 'GGG': 'Gly'
+        };
+
+        const STOP_CODONS = ['UAA', 'UAG', 'UGA'];
+
+        let currentRound = 1;
+        let startTime;
+        let timerInterval;
+        let currentScore = 10000;
+        let gameData = {};
+        let draggedElement = null;
+        let draggedFrom = null;
+        let selectedStrand = null;
+
+        document.getElementById('startButton').addEventListener('click', startGame);
+        document.getElementById('checkButton').addEventListener('click', checkAnswer);
+        document.getElementById('nextButton').addEventListener('click', nextRound);
+        document.getElementById('restartButton').addEventListener('click', () => location.reload());
+
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'block';
+            startTime = Date.now();
+            startTimer();
+            loadRound(1);
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('timer').textContent = 
+                    `시간: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                
+                currentScore = Math.max(0, 10000 - Math.floor(elapsed / 60 * 10000 / 10));
+                document.getElementById('score').textContent = `점수: ${currentScore}`;
+            }, 1000);
+        }
+
+        function generateDNASequence() {
+            const bases = ['A', 'T', 'G', 'C'];
+            let strand1, strand2, rna, proteins;
+            let hasStopCodon = true;
+            
+            // 종결코돈이 없는 서열이 나올 때까지 반복
+            while (hasStopCodon) {
+                strand1 = [];
+                for (let i = 0; i < 12; i++) {
+                    strand1.push(bases[Math.floor(Math.random() * bases.length)]);
+                }
+                
+                strand2 = strand1.map(base => {
+                    if (base === 'A') return 'T';
+                    if (base === 'T') return 'A';
+                    if (base === 'G') return 'C';
+                    if (base === 'C') return 'G';
+                });
+                
+                rna = strand1.map(base => base === 'T' ? 'U' : base);
+                
+                // 종결코돈 체크
+                hasStopCodon = false;
+                for (let i = 0; i < rna.length; i += 3) {
+                    const codon = rna.slice(i, i + 3).join('');
+                    if (STOP_CODONS.includes(codon)) {
+                        hasStopCodon = true;
+                        break;
+                    }
+                }
+            }
+            
+            return { strand1, strand2 };
+        }
+
+        function dnaToRNA(dnaStrand) {
+            return dnaStrand.map(base => base === 'T' ? 'U' : base);
+        }
+
+        function rnaToProtein(rnaSequence) {
+            const proteins = [];
+            for (let i = 0; i < rnaSequence.length; i += 3) {
+                const codon = rnaSequence.slice(i, i + 3).join('');
+                proteins.push(CODON_TABLE[codon] || '?');
+            }
+            return proteins;
+        }
+
+        function loadRound(round) {
+            currentRound = round;
+            selectedStrand = null;
+            document.getElementById('roundInfo').textContent = `라운드 ${round}/3`;
+            
+            const dna = generateDNASequence();
+            const rna = dnaToRNA(dna.strand1);
+            const proteins = rnaToProtein(rna);
+            
+            gameData = {
+                dnaStrand1: dna.strand1,
+                dnaStrand2: dna.strand2,
+                rna: rna,
+                proteins: proteins,
+                blanks: {},
+                correctStrand: 2  // RNA와 일치하지 않는 줄은 strand2
+            };
+            
+            if (round === 1) {
+                gameData.blanks.rna = [4, 7];
+                gameData.blanks.protein = [2];
+            } else if (round === 2) {
+                gameData.blanks.rna = [2, 5, 8, 10];
+                gameData.blanks.protein = [1, 3];
+            } else if (round === 3) {
+                gameData.blanks.dna = [5];
+                gameData.blanks.rna = [1, 3, 5, 7, 9, 11];
+                gameData.blanks.protein = [0, 2, 3];
+            }
+            
+            renderGame();
+        }
+
+        function renderGame() {
+            renderDNA();
+            renderRNA();
+            renderProtein();
+            renderPuzzlePieces();
+            renderCodonTable();
+        }
+
+        function renderDNA() {
+            const strand1Container = document.getElementById('dnaStrand1');
+            const strand2Container = document.getElementById('dnaStrand2');
+            
+            // 기존 퍼즐 조각들을 임시로 저장
+            const existingPieces = {};
+            strand2Container.querySelectorAll('.drop-zone').forEach(zone => {
+                const piece = zone.querySelector('.puzzle-piece');
+                if (piece) {
+                    existingPieces[zone.dataset.index] = piece;
+                }
+            });
+            
+            strand1Container.innerHTML = '';
+            strand2Container.innerHTML = '';
+            
+            // 클릭 이벤트 추가
+            strand1Container.onclick = () => selectStrand(1);
+            strand2Container.onclick = () => selectStrand(2);
+            
+            // 선택 상태 표시
+            if (selectedStrand === 1) {
+                strand1Container.classList.add('selected');
+            } else {
+                strand1Container.classList.remove('selected');
+            }
+            
+            if (selectedStrand === 2) {
+                strand2Container.classList.add('selected');
+            } else {
+                strand2Container.classList.remove('selected');
+            }
+            
+            gameData.dnaStrand1.forEach((base, i) => {
+                const div1 = document.createElement('div');
+                div1.className = 'base';
+                div1.textContent = base;
+                div1.onclick = (e) => e.stopPropagation();
+                strand1Container.appendChild(div1);
+                
+                const div2 = document.createElement('div');
+                div2.className = 'base';
+                div2.onclick = (e) => e.stopPropagation();
+                
+                if (gameData.blanks.dna && gameData.blanks.dna.includes(i)) {
+                    div2.classList.add('drop-zone');
+                    div2.dataset.type = 'dna';
+                    div2.dataset.index = i;
+                    div2.dataset.answer = gameData.dnaStrand2[i];
+                    div2.style.background = '#f0f0f0';
+                    div2.textContent = '';
+                    
+                    // 기존 퍼즐 조각이 있으면 복원
+                    if (existingPieces[i]) {
+                        div2.appendChild(existingPieces[i]);
+                    }
+                    
+                    setupDropZone(div2);
+                } else {
+                    div2.textContent = gameData.dnaStrand2[i];
+                }
+                
+                strand2Container.appendChild(div2);
+            });
+        }
+
+        function selectStrand(strandNumber) {
+            selectedStrand = strandNumber;
+            renderDNA();
+        }
+
+        function renderRNA() {
+            const rnaContainer = document.getElementById('rnaStrand');
+            rnaContainer.innerHTML = '';
+            
+            gameData.rna.forEach((base, i) => {
+                const div = document.createElement('div');
+                div.className = 'rna-base';
+                
+                if (gameData.blanks.rna && gameData.blanks.rna.includes(i)) {
+                    div.classList.add('drop-zone');
+                    div.dataset.type = 'rna';
+                    div.dataset.index = i;
+                    div.dataset.answer = base;
+                    div.style.background = '#f0f0f0';
+                    setupDropZone(div);
+                } else {
+                    div.textContent = base;
+                }
+                
+                rnaContainer.appendChild(div);
+            });
+        }
+
+        function renderProtein() {
+            const proteinContainer = document.getElementById('proteinStrand');
+            proteinContainer.innerHTML = '';
+            
+            gameData.proteins.forEach((protein, i) => {
+                const div = document.createElement('div');
+                div.className = 'protein-box';
+                
+                if (gameData.blanks.protein && gameData.blanks.protein.includes(i)) {
+                    div.classList.add('drop-zone');
+                    div.dataset.type = 'protein';
+                    div.dataset.index = i;
+                    div.dataset.answer = protein;
+                    div.style.background = '#f0f0f0';
+                    setupDropZone(div);
+                } else {
+                    div.textContent = protein;
+                }
+                
+                proteinContainer.appendChild(div);
+            });
+        }
+
+        function renderPuzzlePieces() {
+            const container = document.getElementById('puzzlePieces');
+            container.innerHTML = '';
+            
+            // 드롭존으로 설정
+            container.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            
+            container.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (draggedElement) {
+                    container.appendChild(draggedElement);
+                    draggedElement = null;
+                    draggedFrom = null;
+                }
+            });
+            
+            const pieces = [];
+            
+            if (gameData.blanks.dna) {
+                gameData.blanks.dna.forEach(i => {
+                    pieces.push({ type: 'dna', value: gameData.dnaStrand2[i] });
+                });
+            }
+            
+            if (gameData.blanks.rna) {
+                gameData.blanks.rna.forEach(i => {
+                    pieces.push({ type: 'rna', value: gameData.rna[i] });
+                });
+            }
+            
+            if (gameData.blanks.protein) {
+                gameData.blanks.protein.forEach(i => {
+                    pieces.push({ type: 'protein', value: gameData.proteins[i] });
+                });
+            }
+            
+            pieces.sort(() => Math.random() - 0.5);
+            
+            pieces.forEach(piece => {
+                const div = document.createElement('div');
+                if (piece.type === 'dna' || piece.type === 'rna') {
+                    div.className = 'base puzzle-piece';
+                } else {
+                    div.className = 'protein-box puzzle-piece';
+                }
+                div.textContent = piece.value;
+                div.draggable = true;
+                div.dataset.value = piece.value;
+                div.dataset.type = piece.type;
+                setupDraggable(div);
+                container.appendChild(div);
+            });
+        }
+
+        function renderCodonTable() {
+            const container = document.getElementById('codonTable');
+            const usedProteins = new Set(gameData.proteins);
+            const allProteins = [...new Set(Object.values(CODON_TABLE))];
+            const extraProteins = allProteins.filter(p => !usedProteins.has(p))
+                .sort(() => Math.random() - 0.5).slice(0, 2);
+            
+            const displayProteins = [...usedProteins, ...extraProteins].sort();
+            
+            let html = '';
+            displayProteins.forEach(protein => {
+                const codons = Object.entries(CODON_TABLE)
+                    .filter(([_, p]) => p === protein)
+                    .map(([c, _]) => c);
+                html += `
+                    <div class="codon-group">
+                        <strong>${protein}</strong>
+                        <div class="codon-list">${codons.join(', ')}</div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function setupDraggable(element) {
+            element.addEventListener('dragstart', (e) => {
+                draggedElement = element;
+                draggedFrom = element.parentElement;
+                element.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            
+            element.addEventListener('dragend', (e) => {
+                element.classList.remove('dragging');
+            });
+        }
+
+        function setupDropZone(zone) {
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('drag-over');
+            });
+            
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('drag-over');
+            });
+            
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('drag-over');
+                
+                if (!draggedElement) return;
+                
+                // DNA와 RNA는 서로 호환 가능
+                const isDnaRnaCompatible = 
+                    (draggedElement.dataset.type === 'dna' || draggedElement.dataset.type === 'rna') &&
+                    (zone.dataset.type === 'dna' || zone.dataset.type === 'rna');
+                
+                const isSameType = draggedElement.dataset.type === zone.dataset.type;
+                
+                if (isDnaRnaCompatible || isSameType) {
+                    const existingPiece = zone.querySelector('.puzzle-piece');
+                    
+                    if (existingPiece) {
+                        draggedFrom.appendChild(existingPiece);
+                    }
+                    
+                    zone.appendChild(draggedElement);
+                    zone.textContent = '';
+                    zone.appendChild(draggedElement);
+                }
+                
+                draggedElement = null;
+                draggedFrom = null;
+            });
+            
+            const existingPiece = zone.querySelector('.puzzle-piece');
+            if (existingPiece) {
+                setupDraggable(existingPiece);
+            }
+        }
+
+        function checkAnswer() {
+            let correct = true;
+            
+            // DNA 줄 선택 체크
+            if (selectedStrand !== gameData.correctStrand) {
+                correct = false;
+                alert('DNA 줄 선택이 틀렸습니다. RNA와 일치하지 않는 DNA 줄을 선택해주세요!');
+                return;
+            }
+            
+            // 퍼즐 조각 체크
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                const piece = zone.querySelector('.puzzle-piece');
+                if (!piece || piece.dataset.value !== zone.dataset.answer) {
+                    correct = false;
+                    zone.style.background = '#f8d7da';
+                } else {
+                    zone.style.background = '#d4edda';
+                }
+            });
+            
+            if (correct) {
+                // DNA 줄 선택 정답 표시
+                const strand1Container = document.getElementById('dnaStrand1');
+                const strand2Container = document.getElementById('dnaStrand2');
+                strand1Container.classList.remove('selected', 'incorrect');
+                strand2Container.classList.remove('selected', 'incorrect');
+                
+                if (gameData.correctStrand === 1) {
+                    strand1Container.classList.add('correct');
+                } else {
+                    strand2Container.classList.add('correct');
+                }
+                
+                alert('정답입니다! 다음 라운드로 진행합니다.');
+                document.getElementById('checkButton').style.display = 'none';
+                document.getElementById('nextButton').style.display = 'block';
+            } else {
+                alert('틀렸습니다. 다시 시도해보세요!');
+                setTimeout(() => {
+                    document.querySelectorAll('.drop-zone').forEach(zone => {
+                        // 퍼즐 조각이 있는 경우 배경색을 변경하지 않음
+                        const piece = zone.querySelector('.puzzle-piece');
+                        if (!piece) {
+                            zone.style.background = '#f0f0f0';
+                        }
+                    });
+                }, 1500);
+            }
+        }
+
+        function nextRound() {
+            document.getElementById('checkButton').style.display = 'block';
+            document.getElementById('nextButton').style.display = 'none';
+            
+            // DNA 선택 상태 초기화
+            const strand1Container = document.getElementById('dnaStrand1');
+            const strand2Container = document.getElementById('dnaStrand2');
+            strand1Container.classList.remove('selected', 'correct', 'incorrect');
+            strand2Container.classList.remove('selected', 'correct', 'incorrect');
+            
+            if (currentRound < 3) {
+                loadRound(currentRound + 1);
+            } else {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            document.getElementById('gameContainer').style.display = 'none';
+            document.getElementById('endScreen').style.display = 'flex';
+            document.getElementById('finalScore').textContent = `최종 점수: ${currentScore}`;
+        }
+    </script>
+</body>
+</html>
